@@ -1,44 +1,48 @@
 const asyncHandler = require('express-async-handler')
-const User = require('../models/usersModel')
-const bcrypt = require('bycript')
+const User = require('../models/userModel')
+const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 // @desc register user
 // @route POST api/users
 // @access Public
-const addUser = asyncWrapper(async(req, res)=> {
-  const {name, email, password} = req.body
+const addUser = asyncHandler(async(req, res)=> {
+  const { name, email, password } = req.body
 
-  if(!name || !email || !password ){
+  if (!name || !email || !password) {
     res.status(400)
-    throw new Error('input all fields')
+    throw new Error('Please add all fields')
   }
 
-  const userExist = await User.findOne({email})
-  if(userExist){
+  // Check if user exists
+  const userExists = await User.findOne({ email })
+
+  if (userExists) {
     res.status(400)
     throw new Error('User already exists')
   }
 
+  // Hash password
   const salt = await bcrypt.genSalt(10)
   const hashedPassword = await bcrypt.hash(password, salt)
 
+  // Create user
   const user = await User.create({
-    user,
+    name,
     email,
-    password: hashedPassword
+    password: hashedPassword,
   })
 
-  if(user){
-    res.status(200).json({
-      _id: user._id,
+  if (user) {
+    res.status(201).json({
+      _id: user.id,
       name: user.name,
       email: user.email,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
     })
-  }else{
-    res.staus(400)
-    throw new Error('invalid user data')
+  } else {
+    res.status(400)
+    throw new Error('Invalid user data')
   }
 
 })
@@ -46,7 +50,7 @@ const addUser = asyncWrapper(async(req, res)=> {
 // @desc authenticate user
 // @route POST api/users/login
 // @access Private
-const login = asyncWrapper(async(req, res) => {
+const login = asyncHandler(async(req, res) => {
   const {email, password} = req.body
 
   const user =  await User.findOne({email})
@@ -68,14 +72,8 @@ const login = asyncWrapper(async(req, res) => {
 // @desc get user
 // @route GET api/users/user
 // @access Private
-const getUser = asyncWrapper(async(req, res) => {
-   const {_id, name, email} = await User.findById(req.user.id)
-
-   res.status(200).json({
-     id: _id,
-     name,
-     email 
-   })
+const getUser = asyncHandler(async(req, res) => {
+   res.status(200).json(req.user)
 })
 
 const generateToken = (id)=>{
